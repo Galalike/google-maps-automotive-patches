@@ -141,6 +141,7 @@ internal val manifestPatch = resourcePatch {
     execute {
         val appName = appLabel(appNameOption.value)
         addReportIcon()
+        addThaiFonts()
         document("AndroidManifest.xml").use { document ->
             patchManifest(document, appName)
         }
@@ -199,6 +200,7 @@ val automotiveMicroGPatch = bytecodePatch(
         applyUiDensity()
         useDriverSide()
         useColorScheme()
+        useThaiFont()
     }
 
     finalize {

@@ -127,6 +127,7 @@ public final class CrashLogPatch {
         try {
             Context appContext = context.getApplicationContext() != null ? context.getApplicationContext() : context;
             ReportLog.start(appContext);
+            ThaiFontPatch.init(appContext);
             ReportPatch.onAppStart(appContext);
         } catch (Throwable ex) {
             Logger.printException(() -> "problem report start failure", ex);
