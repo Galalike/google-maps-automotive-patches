@@ -58,11 +58,15 @@ private const val OPEN_MAPS_LINK = "morpheOpenMapsLink"
 private const val CLEAR_SENT_TRIP = "morpheClearSentTrip"
 private const val CHIME_PACKAGE = "chimePackage"
 private const val EXTENSION_PREFIX = "Lapp/morphe/extension/"
+private const val APPLICATION = "Landroid/app/Application;"
+private const val BUNDLE = "Landroid/os/Bundle;"
 private const val CONTEXT = "Landroid/content/Context;"
 private const val INTENT = "Landroid/content/Intent;"
 private const val URI = "Landroid/net/Uri;"
 private const val STRING = "Ljava/lang/String;"
 private const val PATTERN = "Ljava/util/regex/Pattern;"
+private const val APP_START_ACTIVITY = "${APPLICATION}->startActivity(${INTENT}${BUNDLE})V"
+private const val OPTIONS_TO_BUNDLE = "Landroid/app/ActivityOptions;->toBundle()${BUNDLE}"
 private const val GET_PACKAGE_NAME = "Landroid/content/Context;->getPackageName()Ljava/lang/String;"
 private const val USER_SERIAL = "Landroid/os/UserManager;->getSerialNumberForUser(Landroid/os/UserHandle;)J"
 private const val GSERVICES_KEY_ERROR = "Exception reading GServices key"
@@ -120,6 +124,7 @@ val sendToCarPatch = bytecodePatch(
         useOriginalPackageForChime()
         val sentTripHelper = expandSendToCarLinks()
         logTripPushes(sentTripHelper)
+        keepSplitScreenOnTripPush(sentTripHelper)
         useCarName()
         IncludedFeatures.settingsRows += CAR_NAME_CLASS
         IncludedFeatures.features += "send_to_car"
@@ -327,6 +332,46 @@ private fun BytecodePatchContext.logTripPushes(helper: String) {
         "Send to car pushes: ${handler.key()} passes SendToCarPush.tripPushReceived, and tripShown before " +
             "${shown.single()} at ${flags.joinToString { "${it.first} (v${it.second})" }}",
     )
+}
+
+// Sent-trip helper's trip launcher builds an Intent targeting MapsActivity (singleTask) with
+// FLAG_ACTIVITY_NEW_TASK and calls Application.startActivity(intent, ActivityOptions.setLaunchDisplayId(0)).
+// When Maps is already open in BYD split-screen (or on a secondary display), that forces Maps out into
+// fullscreen (display 0), fighting BYD's split-screen manager. Routing this single call through
+// SendToCarPush.startTripActivity delivers the intent directly to the visible MapsActivity's onNewIntent
+// (or preserves its multi-window task / displayId when a launch is required).
+private fun BytecodePatchContext.keepSplitScreenOnTripPush(helper: String) {
+    requireExtensionMethod(SEND_TO_CAR_PUSH_CLASS, "startTripActivity", listOf(APPLICATION, INTENT, BUNDLE), "V")
+    val helperClass = classDefByOrNull(helper) ?: throw PatchException("Missing sent-trip helper $helper")
+    val launchers = helperClass.methods.filter { method ->
+        !AccessFlags.STATIC.isSet(method.accessFlags) &&
+            method.returnType == "V" &&
+            method.parameterTypes.size == 2 &&
+            method.parameterTypes[1].toString() == "Z" &&
+            method.callsAny(setOf(OPTIONS_TO_BUNDLE)) &&
+            method.callsAny(setOf(APP_START_ACTIVITY))
+    }
+    val launcher = launchers.singleOrNull()
+        ?: throw PatchException("Expected one sent-trip launcher in $helper, found ${launchers.map { it.key() }}")
+
+    val mutable = mutableMethodOf(launcher)
+    val code = mutable.implementation!!.instructions
+    val startIndices = code.indices.filter { index ->
+        code[index].opcode == Opcode.INVOKE_VIRTUAL && memberKey(code[index]) == APP_START_ACTIVITY
+    }
+    val startIndex = startIndices.singleOrNull()
+        ?: throw PatchException("Expected one Application.startActivity call in ${launcher.key()}, found ${startIndices.size}")
+    val call = code[startIndex] as? FiveRegisterInstruction
+        ?: throw PatchException("Unexpected startActivity instruction at $startIndex in ${launcher.key()}")
+    if (call.registerCount != 3 || maxOf(call.registerC, call.registerD, call.registerE) > 15) {
+        throw PatchException("Unsupported startActivity registers in ${launcher.key()} at $startIndex")
+    }
+    mutable.replaceInstruction(
+        startIndex,
+        "invoke-static { v${call.registerC}, v${call.registerD}, v${call.registerE} }, " +
+            "$SEND_TO_CAR_PUSH_CLASS->startTripActivity($APPLICATION$INTENT$BUNDLE)V",
+    )
+    sendToCarLogger.info("Send to car split-screen guard: ${launcher.key()} at $startIndex routes through startTripActivity")
 }
 
 // Maps' legacy intent processor hands a maps.app.goo.gl link to FirebaseDynamicLinks.getDynamicLink(Intent)

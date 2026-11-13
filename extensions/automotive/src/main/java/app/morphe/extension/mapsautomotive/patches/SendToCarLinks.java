@@ -243,8 +243,7 @@ public final class SendToCarLinks {
             }
             Intent again = new Intent(intent).putExtra(HANDED_ON, true);
             if (again.getComponent() == null && again.getPackage() == null) again.setPackage(now.getPackageName());
-            now.startActivity(again);
-            return true;
+            return SendToCarPush.deliverToVisibleOrStart(now, again);
         } catch (Throwable error) {
             ReportLog.w(TAG, "trip not handed to the new screen", error);
             return false;

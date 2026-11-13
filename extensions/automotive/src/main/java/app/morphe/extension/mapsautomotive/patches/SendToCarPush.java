@@ -1,6 +1,7 @@
 package app.morphe.extension.mapsautomotive.patches;
 
 import android.app.Activity;
+import android.app.ActivityOptions;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
@@ -11,8 +12,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.view.Display;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 
 import app.morphe.extension.shared.Utils;
@@ -81,8 +87,10 @@ public final class SendToCarPush {
     private static volatile WeakReference<Activity> mapsActivity;
     private static volatile long mapsCreatedAt;
     private static final ArrayDeque<String> recentIds = new ArrayDeque<>();
-    // Main thread.
+    /** Main thread. */
     private static int visible;
+    private static volatile boolean stateSaved;
+    private static volatile Method onNewIntentMethod;
     private static Handler main;
     private static Context app;
     private static final Runnable periodic = new Runnable() {
@@ -191,11 +199,13 @@ public final class SendToCarPush {
             if (!maps(activity)) return;
             mapsActivity = new WeakReference<>(activity);
             mapsCreatedAt = System.currentTimeMillis();
+            stateSaved = false;
         }
 
         @Override
         public void onActivityStarted(Activity activity) {
             if (!maps(activity)) return;
+            stateSaved = false;
             if (visible++ > 0) return;
             nudge(activity.getApplicationContext(), "front");
             main.removeCallbacks(periodic);
@@ -210,6 +220,7 @@ public final class SendToCarPush {
 
         @Override
         public void onActivityResumed(Activity activity) {
+            if (maps(activity)) stateSaved = false;
         }
 
         @Override
@@ -218,6 +229,7 @@ public final class SendToCarPush {
 
         @Override
         public void onActivitySaveInstanceState(Activity activity, Bundle state) {
+            if (activity != null && activity == mapsActivity()) stateSaved = true;
         }
 
         @Override
@@ -288,6 +300,140 @@ public final class SendToCarPush {
         } catch (Throwable error) {
             ReportLog.w(TAG, "trip push not logged", error);
         }
+    }
+
+    /**
+     * Injection point: replaces Maps' Application.startActivity(intent, setLaunchDisplayId(0)) when opening a sent
+     * trip. When MapsActivity is already visible (such as in BYD split-screen), delivers the intent directly to its
+     * onNewIntent on the main thread so WindowManager never pulls it into fullscreen or toggles split-screen. When
+     * fallback activity launch is needed while in multi-window or on a secondary display, preserves that window/display.
+     */
+    public static void startTripActivity(Application application, Intent intent, Bundle options) {
+        if (application == null || intent == null) return;
+        try {
+            if (!SafeMode.on(application, SafeMode.SEND_TO_CAR)) {
+                application.startActivity(intent, options);
+                return;
+            }
+            Activity screen = mapsActivity();
+            if (isAlive(screen) && (visible > 0 || screen.isInMultiWindowMode()
+                    || currentDisplayId(screen) > Display.DEFAULT_DISPLAY)) {
+                if (mainHandler().post(() -> launchTripOnMain(application, screen, intent, options))) {
+                    return;
+                }
+            }
+        } catch (Throwable error) {
+            ReportLog.w(TAG, "preserving split-screen for sent trip failed; using Maps launch", error);
+        }
+        application.startActivity(intent, options);
+    }
+
+    /** Delivers [intent] to [target] in place when visible, else launches it without leaving split-screen. */
+    static boolean deliverToVisibleOrStart(Activity target, Intent intent) {
+        if (!isAlive(target) || intent == null) return false;
+        if (visible > 0 && !stateSaved && deliverOnNewIntent(target, intent)) return true;
+        try {
+            Application application = target.getApplication();
+            startPreservingWindow(application, target, intent, null);
+            return true;
+        } catch (Throwable error) {
+            ReportLog.w(TAG, "fallback launch in existing window failed", error);
+            return false;
+        }
+    }
+
+    private static void launchTripOnMain(Application application, Activity initialScreen, Intent intent, Bundle options) {
+        Activity current = mapsActivity();
+        Activity target = isAlive(current) ? current : (isAlive(initialScreen) ? initialScreen : null);
+        if (target != null && visible > 0 && !stateSaved && deliverOnNewIntent(target, intent)) {
+            return;
+        }
+        startPreservingWindow(application, target, intent, options);
+    }
+
+    private static boolean deliverOnNewIntent(Activity target, Intent intent) {
+        try {
+            Method method = findOnNewIntentMethod(target.getClass());
+            if (method == null) return false;
+            Intent delivered = stripNewTaskFlag(intent);
+            target.setIntent(delivered);
+            method.invoke(target, delivered);
+            ReportLog.i(TAG, "delivered sent trip directly to visible Maps screen (multiWindow="
+                    + target.isInMultiWindowMode() + ")");
+            return true;
+        } catch (Throwable error) {
+            ReportLog.w(TAG, "direct onNewIntent delivery failed; falling back to startActivity", error);
+            return false;
+        }
+    }
+
+    private static void startPreservingWindow(Application application, Activity target, Intent intent, Bundle options) {
+        if (isAlive(target)) {
+            int displayId = currentDisplayId(target);
+            boolean multiWindow = target.isInMultiWindowMode();
+            if (multiWindow || displayId > Display.DEFAULT_DISPLAY) {
+                Intent launch = multiWindow ? stripNewTaskFlag(intent) : intent;
+                Bundle preserved = displayId > Display.DEFAULT_DISPLAY
+                        ? ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle()
+                        : null;
+                target.startActivity(launch, preserved);
+                ReportLog.i(TAG, "launched sent trip in existing Maps window (multiWindow=" + multiWindow
+                        + ", display=" + displayId + ")");
+                return;
+            }
+        }
+        if (application != null) application.startActivity(intent, options);
+    }
+
+    private static Intent stripNewTaskFlag(Intent intent) {
+        Intent copy = new Intent(intent);
+        copy.setFlags(copy.getFlags() & ~Intent.FLAG_ACTIVITY_NEW_TASK);
+        return copy;
+    }
+
+    private static boolean isAlive(Activity activity) {
+        return activity != null && !activity.isFinishing() && !activity.isDestroyed();
+    }
+
+    private static int currentDisplayId(Activity activity) {
+        try {
+            Window window = activity.getWindow();
+            View decor = window == null ? null : window.peekDecorView();
+            Display display = decor != null ? decor.getDisplay() : null;
+            if (display == null) {
+                WindowManager manager = activity.getWindowManager();
+                if (manager != null) display = manager.getDefaultDisplay();
+            }
+            return display != null ? display.getDisplayId() : Display.DEFAULT_DISPLAY;
+        } catch (RuntimeException error) {
+            return Display.DEFAULT_DISPLAY;
+        }
+    }
+
+    private static Method findOnNewIntentMethod(Class<?> activityClass) {
+        Method cached = onNewIntentMethod;
+        if (cached != null) return cached;
+        try {
+            Method found = activityClass.getMethod("onNewIntent", Intent.class);
+            onNewIntentMethod = found;
+            return found;
+        } catch (NoSuchMethodException ignored) {
+        }
+        for (Class<?> current = activityClass; current != null; current = current.getSuperclass()) {
+            try {
+                Method declared = current.getDeclaredMethod("onNewIntent", Intent.class);
+                declared.setAccessible(true);
+                onNewIntentMethod = declared;
+                return declared;
+            } catch (NoSuchMethodException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private static synchronized Handler mainHandler() {
+        if (main == null) main = new Handler(Looper.getMainLooper());
+        return main;
     }
 
     private static SharedPreferences preferences(Context context) {
