@@ -128,6 +128,37 @@
       "options": []
     },
     {
+      "name": "EV battery icon colors",
+      "description": "Colors the EV arrival/charge battery icon by percentage: green (>= 50%), yellow (21-49%), red (<= 20%).",
+      "default": true,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "com.google.android.apps.maps",
+          "name": "Google Maps Automotive",
+          "description": null,
+          "apkFileType": "APK_REQUIRED",
+          "appIconColor": "#4285F4",
+          "signatures": [
+            "1975b2f17177bc89a5dff31f9e64a6cae281a53dc1d1d59b1d147fe1c82afa00",
+            "d22cc500299fb22873a01a010de1c82fbe4d061119b94814dd301dab50cb7678"
+          ],
+          "targets": [
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 29,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Google Maps Automotive for MicroG-RE",
       "description": "Runs Google Maps for Android Automotive on Android 10 with MicroG-RE 7.3.0, named \"Maps\" unless the App name option says otherwise. Adds UI density, language, driver side and color scheme settings, a problem report, an update check and a safe mode.",
       "default": true,
