@@ -343,12 +343,17 @@ public final class SendToCarPush {
     }
 
     private static void launchTripOnMain(Application application, Activity initialScreen, Intent intent, Bundle options) {
-        Activity current = mapsActivity();
-        Activity target = isAlive(current) ? current : (isAlive(initialScreen) ? initialScreen : null);
-        if (target != null && visible > 0 && !stateSaved && deliverOnNewIntent(target, intent)) {
-            return;
+        try {
+            Activity current = mapsActivity();
+            Activity target = isAlive(current) ? current : (isAlive(initialScreen) ? initialScreen : null);
+            if (target != null && visible > 0 && !stateSaved && deliverOnNewIntent(target, intent)) {
+                return;
+            }
+            startPreservingWindow(application, target, intent, options);
+        } catch (Throwable error) {
+            ReportLog.w(TAG, "preserving window for sent trip failed on main thread; using Maps launch", error);
+            if (application != null) application.startActivity(intent, options);
         }
-        startPreservingWindow(application, target, intent, options);
     }
 
     private static boolean deliverOnNewIntent(Activity target, Intent intent) {
@@ -359,7 +364,7 @@ public final class SendToCarPush {
             target.setIntent(delivered);
             method.invoke(target, delivered);
             ReportLog.i(TAG, "delivered sent trip directly to visible Maps screen (multiWindow="
-                    + target.isInMultiWindowMode() + ")");
+                    + target.isInMultiWindowMode() + ", display=" + currentDisplayId(target) + ")");
             return true;
         } catch (Throwable error) {
             ReportLog.w(TAG, "direct onNewIntent delivery failed; falling back to startActivity", error);
@@ -372,14 +377,28 @@ public final class SendToCarPush {
             int displayId = currentDisplayId(target);
             boolean multiWindow = target.isInMultiWindowMode();
             if (multiWindow || displayId > Display.DEFAULT_DISPLAY) {
-                Intent launch = multiWindow ? stripNewTaskFlag(intent) : intent;
-                Bundle preserved = displayId > Display.DEFAULT_DISPLAY
-                        ? ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle()
-                        : null;
-                target.startActivity(launch, preserved);
-                ReportLog.i(TAG, "launched sent trip in existing Maps window (multiWindow=" + multiWindow
-                        + ", display=" + displayId + ")");
-                return;
+                Intent launch = stripNewTaskFlag(intent);
+                if (displayId > Display.DEFAULT_DISPLAY) {
+                    try {
+                        Bundle preserved = ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle();
+                        target.startActivity(launch, preserved);
+                        ReportLog.i(TAG, "launched sent trip in existing Maps display (multiWindow=" + multiWindow
+                                + ", display=" + displayId + ")");
+                        return;
+                    } catch (Throwable error) {
+                        // A launcher's private VirtualDisplay (e.g. BYD Launcher NG) rejects cross-UID setLaunchDisplayId;
+                        // retry from the resident activity without overriding displayId before falling back.
+                        ReportLog.w(TAG, "explicit display launch rejected on display " + displayId + "; retrying in place", error);
+                    }
+                }
+                try {
+                    target.startActivity(launch, null);
+                    ReportLog.i(TAG, "launched sent trip in existing Maps window (multiWindow=" + multiWindow
+                            + ", display=" + displayId + ")");
+                    return;
+                } catch (Throwable error) {
+                    ReportLog.w(TAG, "in-place activity launch failed; using Maps launch", error);
+                }
             }
         }
         if (application != null) application.startActivity(intent, options);
