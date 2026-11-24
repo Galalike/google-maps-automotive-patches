@@ -100,10 +100,12 @@ final class BydRangeLearner {
         if (!Double.isNaN(remainKwh) && remainKwh > 0.0) {
             latestRemainKwh = remainKwh;
         }
-        if (!Double.isNaN(sample.recentConsumptionKwhPer100Km) && sample.recentConsumptionKwhPer100Km >= 6.0 && sample.recentConsumptionKwhPer100Km <= 40.0) {
+        if (!Double.isNaN(sample.recentConsumptionKwhPer100Km) && sample.recentConsumptionKwhPer100Km >= 15.0 && sample.recentConsumptionKwhPer100Km <= 40.0) {
             latestConsPhm = sample.recentConsumptionKwhPer100Km;
-        } else if (!Double.isNaN(sample.totalConsumptionKwhPer100Km) && sample.totalConsumptionKwhPer100Km >= 6.0 && sample.totalConsumptionKwhPer100Km <= 40.0) {
+        } else if (!Double.isNaN(sample.totalConsumptionKwhPer100Km) && sample.totalConsumptionKwhPer100Km >= 15.0 && sample.totalConsumptionKwhPer100Km <= 40.0) {
             latestConsPhm = sample.totalConsumptionKwhPer100Km;
+        } else {
+            latestConsPhm = FALLBACK_CONS_PHM;
         }
 
         if (Double.isNaN(odoKm) || odoKm <= 0.0 || Double.isNaN(socPct) || socPct <= 0.0) return;

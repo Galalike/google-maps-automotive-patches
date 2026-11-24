@@ -15,7 +15,7 @@ import java.util.WeakHashMap;
 public final class BydCustomArrival {
     private static final ThreadLocal<Integer> THREAD_ROUTE_DISTANCE_M = new ThreadLocal<>();
     private static volatile int latestForecastDistanceM = -1;
-    private static final Map<Object, String> CUSTOM_TEXT_BY_QUS =
+    private static final Map<Object, Integer> CUSTOM_RANGE_BY_QUS =
             Collections.synchronizedMap(new WeakHashMap<>());
 
     // Cached reflection handles for allv.k().e.c (route distance in meters)
@@ -54,11 +54,11 @@ public final class BydCustomArrival {
 
     /**
      * Hooked at the return of rmq.v(int, int, aege) -> qus.
-     * Once BydRangeLearner has learned >= 150 km, overrides qus.d, qus.e, qus.f with
-     * BydRangeLearner's arrival SoC%. Before 150 km, keeps Google Maps' default calculation.
+     * Always computes BydRangeLearner's remaining range for display ("<pct>% · <km>").
+     * Only overrides Google Maps' arrival SoC% (qus.d/e/f) once BydRangeLearner has learned >= 150 km.
      */
     public static void applyCustomModel(Object qusObj) {
-        if (qusObj == null || !BydBatteryPatch.isActive() || !BydRangeLearner.isReady()) return;
+        if (qusObj == null || !BydBatteryPatch.isActive()) return;
         Integer distM = THREAD_ROUTE_DISTANCE_M.get();
         if (distM == null || distM <= 0) {
             int fDist = latestForecastDistanceM;
@@ -69,16 +69,24 @@ public final class BydCustomArrival {
         BydRangeLearner.Projection projection = BydRangeLearner.computeProjection(distM / 1000.0);
         if (projection == null) return;
 
-        int arrivalSocInt = (int) Math.round(projection.arrivalSocPct);
-        writeQusValues(qusObj, projection.arrivalSocPct, arrivalSocInt);
+        int arrivalRangeInt = (int) Math.round(projection.arrivalRangeKm);
+        CUSTOM_RANGE_BY_QUS.put(qusObj, arrivalRangeInt);
+
+        if (BydRangeLearner.isReady()) {
+            int arrivalSocInt = (int) Math.round(projection.arrivalSocPct);
+            writeQusValues(qusObj, projection.arrivalSocPct, arrivalSocInt);
+        }
     }
 
     /**
      * Hooked at the return of qut.a() -> String.
-     * Keep only Google Maps' compact percentage text (e.g. "88%") without extra range text.
+     * Appends only the numeric remaining km without Thai/English words: e.g. "88% · 335".
      */
     public static String formatArrivalText(Object qusObj, String originalText) {
-        return originalText;
+        if (qusObj == null || !BydBatteryPatch.isActive()) return originalText;
+        Integer rangeKm = CUSTOM_RANGE_BY_QUS.get(qusObj);
+        if (rangeKm == null) return originalText;
+        return originalText + " · " + rangeKm;
     }
 
     private static int extractRouteDistanceM(Object allvObj) {
