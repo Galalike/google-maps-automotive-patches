@@ -260,6 +260,7 @@ public final class BydBatteryPatch {
             modelUri = new Uri.Builder().scheme("content").authority(authority).path(MODEL_PATH).build();
             BydVehicleModel.initialize(base, NOMINAL_WH, ROLLING_N, LINEAR_N, DRAG_N);
             BydSpeedBands.initialize(base);
+            BydRangeLearner.init(base);
             savedGuided = base.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getString(KEY_GUIDED, "");
             guided = BydForecast.Tracker.load(savedGuided);
             reader = sdk ? new BydEnergyReader() : new TsEnergyReader();
@@ -356,6 +357,7 @@ public final class BydBatteryPatch {
         try {
             if (!active || proto == null) return;
             BydForecast.Forecast forecast = BydForecast.parse(proto);
+            BydCustomArrival.onForecastDistance(forecast.isEmpty() ? -1 : forecast.totalDistanceM());
             long wall = System.currentTimeMillis(), now = SystemClock.elapsedRealtime();
             boolean fresh = lastSampleAt != 0 && now - lastSampleAt <= FRESH_MS;
             int batteryWh = fresh ? sampleEnergyWh : -1;
@@ -471,6 +473,7 @@ public final class BydBatteryPatch {
     }
 
     private static void publish(BydEnergyReader.Sample sample) {
+        BydRangeLearner.onSample(sample);
         int current = (int) Math.round(sample.energy * 1000);
         BydVehicleModel.Model model = BydVehicleModel.activatePending();
         // BYD reports whole SOC percents and Maps floors percentages. Placing the pair inside its

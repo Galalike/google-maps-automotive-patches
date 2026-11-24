@@ -11,12 +11,15 @@ import android.graphics.fonts.FontFamily;
 import android.graphics.fonts.FontStyle;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.widget.TextView;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -35,6 +38,8 @@ import app.morphe.extension.shared.Utils;
 public final class ThaiFontPatch {
     static final String TAG = "MorpheThaiFont";
     private static final String FONT_DIR = "morphe_fonts/";
+    private static final long LAYOUT_DEBOUNCE_MS = 250L;
+    private static final Handler mainHandler = new Handler(Looper.getMainLooper());
     private static final Set<View> watchedRoots =
             Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
     private static final Set<Typeface> preservedTypefaces =
@@ -243,7 +248,17 @@ public final class ThaiFontPatch {
         }
         applyToViewTree(root);
         if (watchedRoots.add(root)) {
-            root.getViewTreeObserver().addOnGlobalLayoutListener(() -> applyToViewTree(root));
+            final WeakReference<View> rootRef = new WeakReference<>(root);
+            final Runnable debouncedApply = () -> {
+                View r = rootRef.get();
+                if (r != null && r.isAttachedToWindow()) {
+                    applyToViewTree(r);
+                }
+            };
+            root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+                mainHandler.removeCallbacks(debouncedApply);
+                mainHandler.postDelayed(debouncedApply, LAYOUT_DEBOUNCE_MS);
+            });
         }
     }
 

@@ -71,8 +71,38 @@
       "default": true,
       "dependencies": [
         "BytecodePatch",
-        "ResourcePatch"
+        "ResourcePatch",
+        "BytecodePatch"
       ],
+      "compatiblePackages": [
+        {
+          "packageName": "com.google.android.apps.maps",
+          "name": "Google Maps Automotive",
+          "description": null,
+          "apkFileType": "APK_REQUIRED",
+          "appIconColor": "#4285F4",
+          "signatures": [
+            "1975b2f17177bc89a5dff31f9e64a6cae281a53dc1d1d59b1d147fe1c82afa00",
+            "d22cc500299fb22873a01a010de1c82fbe4d061119b94814dd301dab50cb7678"
+          ],
+          "targets": [
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": false,
+              "minSdk": 29,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "BYD custom arrival model",
+      "description": "Uses BYD RangeLearner model for arrival battery percentage and remaining drivable range.",
+      "default": true,
+      "dependencies": [],
       "compatiblePackages": [
         {
           "packageName": "com.google.android.apps.maps",

@@ -153,6 +153,7 @@ val bydBatteryPatch = bytecodePatch(
         readOwnEnergyModel()
         captureEnergyForecast()
         useArrivalBattery()
+        useCustomArrivalModel()
         usePhoneBattery()
         IncludedFeatures.settingsRows += BYD_BATTERY_CLASS
         IncludedFeatures.features += "byd_battery"

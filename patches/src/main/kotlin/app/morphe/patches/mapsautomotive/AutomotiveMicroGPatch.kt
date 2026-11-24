@@ -204,6 +204,7 @@ val automotiveMicroGPatch = bytecodePatch(
         useThaiFont()
         useCarColorsOnCluster()
         useCarSatelliteOnCluster()
+        useCustomQuickActions()
     }
 
     finalize {

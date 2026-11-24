@@ -96,14 +96,14 @@ public final class ColorScheme {
      * so Auto follows the second known reading in a row, about {@link #POLL_MS} later; half the poll interval leaves a
      * margin for a poll that runs a little early. A single odd reading does not switch the colors.
      */
-    static final long HOLD_MS = 500;
+    static final long HOLD_MS = 2000;
     /** Unknown readings for this long make the low beam unknown: Auto then keeps Maps' value. */
-    static final long UNKNOWN_AFTER_MS = 10000;
-    private static final long POLL_MS = 1000, INIT_RETRY_MS = 30000;
+    static final long UNKNOWN_AFTER_MS = 12000;
+    private static final long POLL_MS = 4000, INIT_RETRY_MS = 30000;
     /** Failed starts of the light reader before Auto stops trying in this process (Maps' value then). */
     private static final int MAX_INIT_TRIES = 5;
     /** The side lights, for the report only, every this many low beam reads. */
-    private static final int SIDE_LIGHTS_EVERY = 10;
+    private static final int SIDE_LIGHTS_EVERY = 3;
 
     private static volatile WeakReference<Controller> controller;
     /** Maps' own night value at its last update, null before. */
