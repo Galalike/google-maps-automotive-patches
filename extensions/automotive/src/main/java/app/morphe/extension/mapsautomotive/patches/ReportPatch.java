@@ -664,18 +664,20 @@ public final class ReportPatch {
 
     private static String featureName(String feature, boolean thai) {
         switch (feature) {
-            case SafeMode.UI_DENSITY: return thai ? "ขนาดการแสดงผล (UI density)" : "UI density";
-            case SafeMode.LANGUAGE: return thai ? "ภาษา (Language)" : "Language";
-            case SafeMode.DRIVER_SIDE: return thai ? "ฝั่งพวงมาลัย (Driver side)" : "Driver side";
-            case SafeMode.COLOR_SCHEME: return thai ? "รูปแบบสี (Color scheme)" : "Color scheme";
-            case SafeMode.THAI_FONT: return thai ? "ฟอนต์ไทย (Noto Sans Thai)" : "Thai font (Noto Sans Thai)";
+            case SafeMode.UI_DENSITY: return thai ? "ขนาดการแสดงผล" : "UI density";
+            case SafeMode.LANGUAGE: return thai ? "ภาษา" : "Language";
+            case SafeMode.DRIVER_SIDE: return thai ? "ฝั่งพวงมาลัย" : "Driver side";
+            case SafeMode.COLOR_SCHEME: return thai ? "รูปแบบสี" : "Color scheme";
+            case SafeMode.THAI_FONT: return thai ? "ฟอนต์ไทย" : "Thai font (Noto Sans Thai)";
             case SafeMode.CLUSTER_SATELLITE: return thai ? "ดาวเทียมบนแผนที่หน้าปัด" : "Satellite on the cluster map";
-            case SafeMode.BUILDINGS_3D: return thai ? "อาคาร 3 มิติ (3D buildings)" : "3D buildings";
-            case SafeMode.BYD_BATTERY: return thai ? "แบตเตอรี่รถ BYD (EV)" : "BYD battery (EV)";
+            case SafeMode.BUILDINGS_3D: return thai ? "อาคาร 3 มิติ" : "3D buildings";
+            case SafeMode.BYD_BATTERY: return thai ? "แบตเตอรี่รถ BYD" : "BYD battery (EV)";
             case SafeMode.SEND_TO_CAR: return "Send to car";
             case SafeMode.LOCATION_LOCKOUT_DELAY: return thai ? "แก้ตำแหน่งกะพริบของ BYD" : "BYD location flicker fix";
+            case SafeMode.GPS_INTERVAL: return thai ? "รอบอัปเดต GPS ของ BYD" : "BYD GPS interval";
             case SafeMode.BYD_NAVIGATION_VOLUME: return thai ? "ระดับเสียงนำทางของ BYD" : "BYD navigation volume";
-            case SafeMode.TTS_WARMUP: return thai ? "เตรียมเสียงนำทางล่วงหน้า (TTS)" : "Voice guidance warm-up (TTS)";
+            case SafeMode.NAVIGATION_SPEECH: return thai ? "เสียงอ่านชื่อถนนนำทาง" : "Navigation speech";
+            case SafeMode.TTS_WARMUP: return thai ? "เตรียมเสียงนำทางล่วงหน้า" : "Voice guidance warm-up (TTS)";
             case SafeMode.WINDOW_REFRESH: return thai ? "ปรับเลย์เอาต์เมื่อแบ่งจอ" : "Split-screen layout refresh";
             default: return thai ? "แถวเสริมใน Settings" : "Extra rows in Settings";
         }

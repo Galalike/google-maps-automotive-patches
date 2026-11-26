@@ -697,7 +697,7 @@ public final class ColorScheme {
 
     /** Injection point: the row title. */
     public static String getSettingsTitle(Context context) {
-        return UiDensityPatch.isThai(context) ? "รูปแบบสี (Color scheme)" : "Color scheme";
+        return UiDensityPatch.isThai(context) ? "รูปแบบสี" : "Color scheme";
     }
 
     /** Injection point: the row subtitle, the current choice. */

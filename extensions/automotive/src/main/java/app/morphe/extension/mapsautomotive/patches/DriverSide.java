@@ -286,7 +286,7 @@ public final class DriverSide {
 
     /** Injection point: the row title. */
     public static String getSettingsTitle(Context context) {
-        return UiDensityPatch.isThai(context) ? "ฝั่งพวงมาลัย (Driver side)" : "Driver side";
+        return UiDensityPatch.isThai(context) ? "ฝั่งพวงมาลัย" : "Driver side";
     }
 
     /** Injection point: the row subtitle, the current choice. */

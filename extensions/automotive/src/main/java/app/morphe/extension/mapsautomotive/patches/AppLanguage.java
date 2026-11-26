@@ -249,7 +249,7 @@ public final class AppLanguage {
 
     /** Injection point: the row title. */
     public static String getSettingsTitle(Context context) {
-        return UiDensityPatch.isThai(context) ? "ภาษา (Language)" : "Language";
+        return UiDensityPatch.isThai(context) ? "ภาษา" : "Language";
     }
 
     /** Injection point: the row subtitle, the current choice. */

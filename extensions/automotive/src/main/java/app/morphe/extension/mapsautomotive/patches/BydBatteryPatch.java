@@ -1011,7 +1011,7 @@ public final class BydBatteryPatch {
 
     /** Injection point: the row title. */
     public static String getSettingsTitle(Context context) {
-        return UiDensityPatch.isThai(context) ? "แบตเตอรี่รถ BYD (EV)" : "BYD battery (EV)";
+        return UiDensityPatch.isThai(context) ? "แบตเตอรี่รถ BYD" : "BYD battery (EV)";
     }
 
     /** Injection point: the row subtitle, the current state. */
@@ -1328,7 +1328,7 @@ public final class BydBatteryPatch {
                 boolean untested = !enabled && untestedByd(host);
                 status.setText(!enabled ? (untested ? (thai ? "ปิด · ยังไม่ได้ทดสอบกับรถรุ่นนี้" : "Off · not tested on this car model")
                         : (thai ? "ปิด" : "Off"))
-                        : (thai ? "เปิด · ไม่พบระบบรถ BYD (BYD SDK)" : "On · no BYD vehicle system (BYD SDK) found"));
+                        : (thai ? "เปิด · ไม่พบระบบรถ BYD" : "On · no BYD vehicle system (BYD SDK) found"));
                 intro.setText(!enabled
                         ? (thai ? "เปิดเพื่อให้ Maps รู้ระดับแบต แสดงแบตเมื่อถึงปลายทาง และวางจุดแวะชาร์จ"
                         + " เปลี่ยนแล้วแอปจะเริ่มใหม่"
@@ -1852,7 +1852,7 @@ public final class BydBatteryPatch {
                         : String.format(Locale.ROOT, thai ? "อ่านไม่ได้ · ใช้ %d" + NBSP + "°C ของตาราง%s"
                         : "unavailable · the tables' %d" + NBSP + "°C%s", Math.round(file.fileExternalTemp), tables));
             }
-            line(text, thai ? "สุขภาพแบต (SOH)" : "Battery health (SOH)", healthDetails(thai));
+            line(text, thai ? "สุขภาพแบต" : "Battery health (SOH)", healthDetails(thai));
             line(text, thai ? "อุณหภูมิแบต" : "Battery temperature", temperatureDetails(thai));
             line(text, thai ? "ค่าเฉลี่ยจากรถ" : "Car's average", Double.isNaN(model.carTotal) && Double.isNaN(model.carRecent)
                     ? (thai ? "ไม่มีข้อมูล" : "unavailable")

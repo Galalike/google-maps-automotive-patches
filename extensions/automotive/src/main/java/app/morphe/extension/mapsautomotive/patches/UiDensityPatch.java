@@ -238,7 +238,7 @@ public final class UiDensityPatch {
 
     /** Injection point: the row title. */
     public static String getSettingsTitle(Context context) {
-        return isThai(context) ? "ขนาดการแสดงผล (UI density)" : "UI density";
+        return isThai(context) ? "ขนาดการแสดงผล" : "UI density";
     }
 
     /** Injection point: the row subtitle, the current choice. */
